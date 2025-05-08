@@ -42,10 +42,10 @@ app.get("/api/v1", (req, res) => {
 app.post("/api/v1/verifyPassword", async (req, res) => {
 	try {
 		const password = req.body.password; // expect array of word objects
-		if (password === process.env.PASSWORD || password === process.env.token) {
+		if (password === process.env.PASSWORD || password === process.env.TOKEN) {
 			res.status(200).json({
 				message: "Password is correct",
-				token: process.env.token,
+				token: process.env.TOKEN,
 			});
 		} else {
 			res.status(401).json({ message: "Password is incorrect" });
