@@ -163,4 +163,4 @@ app.get("/api/v1/words/filter", async (req, res) => {
 // });
 
 // Export the Express app as a Vercel serverless handler
-module.exports.handler = serverless(app);
+module.exports = serverless(app);
