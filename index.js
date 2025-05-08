@@ -29,9 +29,6 @@ mongoose
 	})
 	.catch((error) => console.log(error));
 
-// Export the Express app as a Vercel serverless handler
-module.exports = serverless(app);
-
 app.get("/api/v1", (req, res) => {
 	res.send("Vocabulary API is running ✅");
 });
@@ -164,3 +161,6 @@ app.get("/api/v1/words/filter", async (req, res) => {
 // 			.json({ message: "Failed to delete words", error: error.message });
 // 	}
 // });
+
+// Export the Express app as a Vercel serverless handler
+module.exports.handler = serverless(app);
