@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const dotenv = require("dotenv");
 const Word = require("./model/Word");
 const cors = require("cors");
-const serverless = require("serverless-http");
+const http = require("http");
 
 dotenv.config();
 
@@ -11,7 +11,7 @@ const app = express();
 app.use(express.json()); // for parsing JSON
 app.use(cors({ origin: "*", credentials: true }));
 
-const PORT = process.env.PORT || 8000;
+const PORT = process.env.PORT || 5000;
 const MONGO_URL = process.env.MONGO_URL;
 
 if (!MONGO_URL) {
@@ -19,13 +19,18 @@ if (!MONGO_URL) {
 	process.exit(1);
 }
 
+const server = http.createServer(app);
+
 mongoose
-	.connect(MONGO_URL)
+	.connect(MONGO_URL, {
+		useNewUrlParser: true,
+		useUnifiedTopology: true,
+	})
 	.then(() => {
 		console.log("Database connected successfully");
-		// app.listen(PORT, () => {
-		// 	console.log(`Server is running on port ${PORT}`);
-		// });
+		server.listen(PORT, () => {
+			console.log(`Server is running on port ${PORT}`);
+		});
 	})
 	.catch((error) => console.log(error));
 
@@ -161,6 +166,3 @@ app.get("/api/v1/words/filter", async (req, res) => {
 // 			.json({ message: "Failed to delete words", error: error.message });
 // 	}
 // });
-
-// Export the Express app as a Vercel serverless handler
-module.exports = serverless(app);
