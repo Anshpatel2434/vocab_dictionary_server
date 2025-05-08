@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 const dotenv = require("dotenv");
 const Word = require("./model/Word");
 const cors = require("cors");
+const serverless = require("serverless-http");
 
 dotenv.config();
 
@@ -19,17 +20,17 @@ if (!MONGO_URL) {
 }
 
 mongoose
-	.connect(MONGO_URL, {
-		useNewUrlParser: true,
-		useUnifiedTopology: true,
-	})
+	.connect(MONGO_URL)
 	.then(() => {
 		console.log("Database connected successfully");
-		app.listen(PORT, () => {
-			console.log(`Server is running on port ${PORT}`);
-		});
+		// app.listen(PORT, () => {
+		// 	console.log(`Server is running on port ${PORT}`);
+		// });
 	})
 	.catch((error) => console.log(error));
+
+// Export the Express app as a Vercel serverless handler
+module.exports = serverless(app);
 
 app.get("/api/v1", (req, res) => {
 	res.send("Vocabulary API is running ✅");
