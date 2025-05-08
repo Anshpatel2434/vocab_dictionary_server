@@ -13,8 +13,16 @@ app.use(cors({ origin: "*", credentials: true }));
 const PORT = process.env.PORT || 8000;
 const MONGO_URL = process.env.MONGO_URL;
 
+if (!MONGO_URL) {
+	console.error("MONGO_URL is not defined in environment variables.");
+	process.exit(1);
+}
+
 mongoose
-	.connect(MONGO_URL)
+	.connect(MONGO_URL, {
+		useNewUrlParser: true,
+		useUnifiedTopology: true,
+	})
 	.then(() => {
 		console.log("Database connected successfully");
 		app.listen(PORT, () => {
