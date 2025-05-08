@@ -70,30 +70,37 @@ app.post("/api/v1/postWords", async (req, res) => {
 				.json({ message: "Please provide an array of words." });
 		}
 
-		// Extract all word names from request
-		const wordNames = words.map((w) => w.word);
+		// Convert all input word names to lowercase
+		const wordNamesLower = words.map((w) => w.word.toLowerCase());
 
-		// Find existing words already in DB
-		const existingWords = await Word.find({ word: { $in: wordNames } });
-		const existingWordNames = existingWords.map((w) => w.word);
+		// Find existing words in DB using case-insensitive search
+		const existingWords = await Word.find({
+			word: { $in: wordNamesLower.map((name) => new RegExp(`^${name}$`, "i")) },
+		});
 
-		// Filter out duplicates
+		const existingWordNamesLower = existingWords.map((w) =>
+			w.word.toLowerCase()
+		);
+
+		// Filter out duplicates (case-insensitive)
 		const uniqueWords = words.filter(
-			(w) => !existingWordNames.includes(w.word)
+			(w) => !existingWordNamesLower.includes(w.word.toLowerCase())
 		);
 
 		if (uniqueWords.length === 0) {
-			return res
-				.status(400)
-				.json({ message: "All provided words already exist in the database." });
+			return res.status(400).json({
+				message:
+					"All provided words already exist in the database (case-insensitive check).",
+			});
 		}
 
 		// Insert only unique words
 		const savedWords = await Word.insertMany(uniqueWords);
+
 		res.status(201).json({
 			message: `${savedWords.length} words added successfully.`,
 			addedWords: savedWords,
-			skippedWords: existingWordNames,
+			skippedWords: existingWordNamesLower,
 		});
 	} catch (error) {
 		console.error(error);
