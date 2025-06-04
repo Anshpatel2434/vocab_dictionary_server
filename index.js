@@ -110,7 +110,7 @@ app.post("/api/v1/postWords", async (req, res) => {
 	}
 });
 
-// 2️⃣ GET: Paginated words list
+// 2️⃣ GET: Paginated words list (sorted by least opened first)
 app.get("/api/v1/getWords", async (req, res) => {
 	try {
 		const limit = parseInt(req.query.limit) || 10;
@@ -120,7 +120,15 @@ app.get("/api/v1/getWords", async (req, res) => {
 		const totalCount = await Word.countDocuments();
 		const totalPages = Math.ceil(totalCount / limit);
 
-		const words = await Word.find().skip(skip).limit(limit);
+		// Sort by no_of_times_opened (ascending - least opened first)
+		// Handle cases where no_of_times_opened might be null/undefined
+		const words = await Word.find()
+			.sort({
+				no_of_times_opened: 1, // 1 = ascending (least to most)
+				_id: 1, // Secondary sort by ID for consistent ordering
+			})
+			.skip(skip)
+			.limit(limit);
 
 		res.status(200).json({
 			totalCount,
@@ -157,6 +165,74 @@ app.get("/api/v1/words/filter", async (req, res) => {
 		res.status(500).json({
 			message: "Failed to fetch filtered words",
 			error: error.message,
+		});
+	}
+});
+
+// 5️⃣ POST: Increase the count of no_of_times_opened (Simplified Atomic Version)
+app.post("/api/v1/increase_open_count", async (req, res) => {
+	try {
+		const { id } = req.body;
+
+		// Validate input
+		if (!id) {
+			return res.status(400).json({
+				success: false,
+				message: "Word ID is required",
+			});
+		}
+
+		// Validate MongoDB ObjectId format
+		if (!mongoose.Types.ObjectId.isValid(id)) {
+			return res.status(400).json({
+				success: false,
+				message: "Invalid word ID format",
+			});
+		}
+
+		// Use simple $inc operation - MongoDB will handle undefined fields gracefully
+		const updatedWord = await Word.findByIdAndUpdate(
+			id,
+			{ $inc: { no_of_times_opened: 1 } },
+			{
+				new: true, // Return the updated document
+				runValidators: true, // Run schema validators
+			}
+		);
+
+		// Check if word was found
+		if (!updatedWord) {
+			return res.status(404).json({
+				success: false,
+				message: "Word not found",
+			});
+		}
+
+		// Success response
+		res.status(200).json({
+			success: true,
+			message: "Open count increased successfully",
+			data: {
+				wordId: updatedWord._id,
+				word: updatedWord.word,
+				no_of_times_opened: updatedWord.no_of_times_opened,
+			},
+		});
+	} catch (error) {
+		console.error("Error increasing open count:", error);
+
+		// Handle specific MongoDB errors
+		if (error.name === "CastError") {
+			return res.status(400).json({
+				success: false,
+				message: "Invalid word ID format",
+			});
+		}
+
+		// Generic server error
+		res.status(500).json({
+			success: false,
+			message: "Failed to increase open count",
 		});
 	}
 });

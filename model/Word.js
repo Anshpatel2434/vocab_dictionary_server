@@ -35,6 +35,10 @@ const WordSchema = new mongoose.Schema(
 		relate_with: {
 			type: String,
 		},
+		no_of_times_opened: {
+			type: Number,
+			default: 0,
+		},
 	},
 	{ timestamps: true, collection: "Words" }
 );
