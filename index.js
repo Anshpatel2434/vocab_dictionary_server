@@ -120,12 +120,12 @@ app.get("/api/v1/getWords", async (req, res) => {
 		const totalCount = await Word.countDocuments();
 		const totalPages = Math.ceil(totalCount / limit);
 
-		// Sort by no_of_times_opened (ascending - least opened first)
+		// Sort by no_of_times_opened (descending - most opened first)
 		// Handle cases where no_of_times_opened might be null/undefined
 		const words = await Word.find()
 			.sort({
-				no_of_times_opened: 1, // 1 = ascending (least to most)
-				_id: 1, // Secondary sort by ID for consistent ordering
+				no_of_times_opened: -1, // 1 = descending (most to least)
+				_id: -1, // Secondary sort by ID for consistent ordering
 			})
 			.skip(skip)
 			.limit(limit);
