@@ -237,6 +237,350 @@ app.post("/api/v1/increase_open_count", async (req, res) => {
 	}
 });
 
+// 5️⃣ POST: Decrease the count of no_of_times_opened (Simplified Atomic Version)
+app.post("/api/v1/decrease_open_count", async (req, res) => {
+	try {
+		const { id } = req.body;
+
+		// Validate input
+		if (!id) {
+			return res.status(400).json({
+				success: false,
+				message: "Word ID is required",
+			});
+		}
+
+		// Validate MongoDB ObjectId format
+		if (!mongoose.Types.ObjectId.isValid(id)) {
+			return res.status(400).json({
+				success: false,
+				message: "Invalid word ID format",
+			});
+		}
+
+		// Use simple $inc operation - MongoDB will handle undefined fields gracefully
+		const updatedWord = await Word.findByIdAndUpdate(
+			id,
+			{ $inc: { no_of_times_opened: -1 } },
+			{
+				new: true, // Return the updated document
+				runValidators: true, // Run schema validators
+			}
+		);
+
+		// Check if word was found
+		if (!updatedWord) {
+			return res.status(404).json({
+				success: false,
+				message: "Word not found",
+			});
+		}
+
+		// Success response
+		res.status(200).json({
+			success: true,
+			message: "Open count decreased successfully",
+			data: {
+				wordId: updatedWord._id,
+				word: updatedWord.word,
+				no_of_times_opened: updatedWord.no_of_times_opened,
+			},
+		});
+	} catch (error) {
+		console.error("Error decreasing open count:", error);
+
+		// Handle specific MongoDB errors
+		if (error.name === "CastError") {
+			return res.status(400).json({
+				success: false,
+				message: "Invalid word ID format",
+			});
+		}
+
+		// Generic server error
+		res.status(500).json({
+			success: false,
+			message: "Failed to decrease open count",
+		});
+	}
+});
+
+// 🔥 GET: Fetch words with different sorting options
+app.get("/api/v1/getWordsByType", async (req, res) => {
+	try {
+		const limit = parseInt(req.query.limit) || 20;
+		const page = parseInt(req.query.page) || 1;
+		const type = req.query.type || "normal"; // Default to normal
+		const skip = (page - 1) * limit;
+
+		// Validate pagination parameters
+		if (limit < 1 || limit > 100) {
+			return res.status(400).json({
+				success: false,
+				message: "Limit must be between 1 and 100",
+			});
+		}
+
+		if (page < 1) {
+			return res.status(400).json({
+				success: false,
+				message: "Page must be greater than 0",
+			});
+		}
+
+		const totalCount = await Word.countDocuments();
+		const totalPages = Math.ceil(totalCount / limit);
+
+		let sortCriteria = {};
+		let description = "";
+
+		// Define sorting based on type
+		switch (type.toLowerCase()) {
+			case "least_revised":
+				sortCriteria = {
+					no_of_times_revised: 1, // Ascending - least revised first
+					_id: 1, // Secondary sort for consistency
+				};
+				description = "Words sorted by least revised (ascending)";
+				break;
+
+			case "most_difficult":
+				sortCriteria = {
+					no_of_times_opened: -1, // Descending - most opened first
+					_id: -1, // Secondary sort for consistency
+				};
+				description = "Words sorted by most difficult (most opened)";
+				break;
+
+			case "normal":
+				sortCriteria = {
+					no_of_times_revised: 1, // Ascending - normal sequence
+					_id: 1, // Secondary sort for consistency
+				};
+				description =
+					"Words sorted in normal sequence (revised count ascending)";
+				break;
+
+			case "most_revised":
+				sortCriteria = {
+					no_of_times_revised: -1, // Descending - most revised first
+					_id: -1, // Secondary sort for consistency
+				};
+				description = "Words sorted by most revised (descending)";
+				break;
+
+			case "least_opened":
+				sortCriteria = {
+					no_of_times_opened: 1, // Ascending - least opened first
+					_id: 1, // Secondary sort for consistency
+				};
+				description = "Words sorted by least opened (easiest words)";
+				break;
+
+			case "newest_first":
+				sortCriteria = {
+					createdAt: -1, // Descending - newest first
+					_id: -1, // Secondary sort for consistency
+				};
+				description = "Words sorted by newest first";
+				break;
+
+			case "oldest_first":
+				sortCriteria = {
+					createdAt: 1, // Ascending - oldest first
+					_id: 1, // Secondary sort for consistency
+				};
+				description = "Words sorted by oldest first";
+				break;
+
+			case "alphabetical":
+				sortCriteria = {
+					word: 1, // Ascending - A to Z
+					_id: 1, // Secondary sort for consistency
+				};
+				description = "Words sorted alphabetically (A to Z)";
+				break;
+
+			case "reverse_alphabetical":
+				sortCriteria = {
+					word: -1, // Descending - Z to A
+					_id: -1, // Secondary sort for consistency
+				};
+				description = "Words sorted reverse alphabetically (Z to A)";
+				break;
+
+			default:
+				return res.status(400).json({
+					success: false,
+					message:
+						"Invalid type. Supported types: least_revised, most_difficult, normal, most_revised, least_opened, newest_first, oldest_first, alphabetical, reverse_alphabetical",
+				});
+		}
+
+		// Fetch words with sorting
+		const words = await Word.find().sort(sortCriteria).skip(skip).limit(limit);
+
+		res.status(200).json({
+			success: true,
+			message: "Words fetched successfully",
+			data: {
+				totalCount,
+				totalPages,
+				currentPage: page,
+				limit,
+				type,
+				description,
+				words,
+			},
+		});
+	} catch (error) {
+		console.error("Error fetching words by type:", error);
+		res.status(500).json({
+			success: false,
+			message: "Failed to fetch words",
+			error: error.message,
+		});
+	}
+});
+
+// 📈 POST: Increase the count of no_of_times_revised
+app.post("/api/v1/increase_revision_count", async (req, res) => {
+	try {
+		const { id } = req.body;
+
+		// Validate input
+		if (!id) {
+			return res.status(400).json({
+				success: false,
+				message: "Word ID is required",
+			});
+		}
+
+		// Validate MongoDB ObjectId format
+		if (!mongoose.Types.ObjectId.isValid(id)) {
+			return res.status(400).json({
+				success: false,
+				message: "Invalid word ID format",
+			});
+		}
+
+		// Use $inc operation to increment no_of_times_revised by 1
+		const updatedWord = await Word.findByIdAndUpdate(
+			id,
+			{ $inc: { no_of_times_revised: 1 } },
+			{
+				new: true, // Return the updated document
+				runValidators: true, // Run schema validators
+			}
+		);
+
+		// Check if word was found
+		if (!updatedWord) {
+			return res.status(404).json({
+				success: false,
+				message: "Word not found",
+			});
+		}
+
+		// Success response
+		res.status(200).json({
+			success: true,
+			message: "Revision count increased successfully",
+			data: {
+				wordId: updatedWord._id,
+				word: updatedWord.word,
+				no_of_times_revised: updatedWord.no_of_times_revised,
+				no_of_times_opened: updatedWord.no_of_times_opened,
+			},
+		});
+	} catch (error) {
+		console.error("Error increasing revision count:", error);
+
+		// Handle specific MongoDB errors
+		if (error.name === "CastError") {
+			return res.status(400).json({
+				success: false,
+				message: "Invalid word ID format",
+			});
+		}
+
+		// Generic server error
+		res.status(500).json({
+			success: false,
+			message: "Failed to increase revision count",
+		});
+	}
+});
+
+// 📊 GET: Get available word sorting types (Helper endpoint)
+app.get("/api/v1/getWordSortingTypes", (req, res) => {
+	try {
+		const sortingTypes = [
+			{
+				type: "least_revised",
+				description: "Words sorted by least revised (ascending)",
+				useCase: "Practice words you haven't revised much",
+			},
+			{
+				type: "most_difficult",
+				description: "Words sorted by most difficult (most opened)",
+				useCase: "Focus on challenging words you open frequently",
+			},
+			{
+				type: "normal",
+				description:
+					"Words sorted in normal sequence (revised count ascending)",
+				useCase: "Default learning sequence",
+			},
+			{
+				type: "most_revised",
+				description: "Words sorted by most revised (descending)",
+				useCase: "Review words you've practiced the most",
+			},
+			{
+				type: "least_opened",
+				description: "Words sorted by least opened (easiest words)",
+				useCase: "Start with easier, less frequently accessed words",
+			},
+			{
+				type: "newest_first",
+				description: "Words sorted by newest first",
+				useCase: "Focus on recently added vocabulary",
+			},
+			{
+				type: "oldest_first",
+				description: "Words sorted by oldest first",
+				useCase: "Review foundational vocabulary",
+			},
+			{
+				type: "alphabetical",
+				description: "Words sorted alphabetically (A to Z)",
+				useCase: "Systematic alphabetical learning",
+			},
+			{
+				type: "reverse_alphabetical",
+				description: "Words sorted reverse alphabetically (Z to A)",
+				useCase: "Reverse alphabetical learning",
+			},
+		];
+
+		res.status(200).json({
+			success: true,
+			message: "Available word sorting types",
+			data: {
+				totalTypes: sortingTypes.length,
+				sortingTypes,
+			},
+		});
+	} catch (error) {
+		console.error("Error fetching sorting types:", error);
+		res.status(500).json({
+			success: false,
+			message: "Failed to fetch sorting types",
+		});
+	}
+});
+
 // 4️⃣ (Optional) DELETE all words — useful for admin cleanup
 // app.delete("/words", async (req, res) => {
 // 	try {

@@ -37,6 +37,10 @@ const WordSchema = new mongoose.Schema(
 		},
 		no_of_times_opened: {
 			type: Number,
+			default: 5,
+		},
+		no_of_times_revised: {
+			type: Number,
 			default: 0,
 		},
 	},
