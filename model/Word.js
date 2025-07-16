@@ -35,6 +35,12 @@ const WordSchema = new mongoose.Schema(
 		relate_with: {
 			type: String,
 		},
+		mnemonic: {
+			type: String,
+		},
+		breakdown: {
+			type: String,
+		},
 		no_of_times_opened: {
 			type: Number,
 			default: 5,

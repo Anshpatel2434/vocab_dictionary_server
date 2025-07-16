@@ -4,6 +4,7 @@ const dotenv = require("dotenv");
 const Word = require("./model/Word");
 const cors = require("cors");
 const http = require("http");
+const { default: talkWithAI } = require("./AI");
 
 dotenv.config();
 
@@ -33,6 +34,9 @@ mongoose
 		});
 	})
 	.catch((error) => console.log(error));
+
+// Utility function to create a delay
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 app.get("/api/v1", (req, res) => {
 	res.send("Vocabulary API is running ✅");
@@ -124,8 +128,8 @@ app.get("/api/v1/getWords", async (req, res) => {
 		// Handle cases where no_of_times_opened might be null/undefined
 		const words = await Word.find()
 			.sort({
-				no_of_times_opened: -1, // 1 = descending (most to least)
-				_id: -1, // Secondary sort by ID for consistent ordering
+				createdAt: -1, // Descending - newest first
+				_id: -1, // Secondary sort for consistency
 			})
 			.skip(skip)
 			.limit(limit);
@@ -581,6 +585,131 @@ app.get("/api/v1/getWordSortingTypes", (req, res) => {
 	}
 });
 
+//to update all the words just in case
+// app.put("/api/v1/updateWordsWithMnemonics", async (req, res) => {
+// 	console.log("Got the request ? ");
+// 	try {
+// 		const allWords = await Word.find({});
+// 		if (!allWords || allWords.length === 0) {
+// 			return res
+// 				.status(404)
+// 				.json({ message: "No words found in the database." });
+// 		}
+
+// 		// Filter words missing mnemonic or breakdown
+// 		const wordsToProcess = allWords.filter(
+// 			(word) =>
+// 				!word.mnemonic ||
+// 				word.mnemonic === "" ||
+// 				!word.breakdown ||
+// 				word.breakdown === ""
+// 		);
+
+// 		if (wordsToProcess.length === 0) {
+// 			return res.status(200).json({
+// 				message: "All words already have mnemonic and breakdown.",
+// 				updatedWords: [],
+// 			});
+// 		}
+
+// 		const BATCH_SIZE = 20; // Adjust depending on your AI token limits
+// 		const updatedWords = [];
+
+// 		for (let i = 0; i < wordsToProcess.length; i += BATCH_SIZE) {
+// 			const batch = wordsToProcess.slice(i, i + BATCH_SIZE);
+// 			const wordsArray = batch.map((w) => w.word);
+// 			console.log("The words array is : ");
+// 			console.log(wordsArray);
+
+// 			const prompt = `You are an expert English language assistant.
+
+// I will give you a list of English words.
+
+// For each word, return a JSON object with these exact fields:
+// {
+//   "word": "<the word>",
+//   "pronunciation": "<phonetic IPA pronunciation> | <simple phonetic pronunciation, e.g., uhn·taylz>",
+//   "meaning": [
+//     { "meaning": "<first meaning (max 10 words)>", "example": "<clear example sentence using the word>" },
+//     { "meaning": "<second meaning if available>", "example": "<clear example sentence using the word>" }
+//   ],
+//   "origin": "<short, clear origin like 'Latin', 'Greek', with 1-sentence explanation>",
+//   "relate_with": "<a simple mental image, feeling, or situation to help remember this word>",
+//   "mnemonic": "<a super short, clever, and highly memorable phrase or sound-alike trick that directly hints at the word's meaning. It should be instantly recalled and directly connect to what the word means. Prioritize creative acronyms or vivid sound-alikes that make the meaning 'click'. Avoid simple, technical splits like 'PRE + JUDGE'. For example: 'Ubiquitous: U B Quick To See It Everywhere.' (means found everywhere). 'Ephemeral: Every Photo Eventually Melts Away, Really A Little.' (means short-lived). 'Cacophony: Cats And Cows Often Fight, Oh No! Yikes!' (means loud, messy noise).>",
+//   "breakdown": "<a simple, vivid, story-based, or visual explanation that directly clarifies how the 'mnemonic' helps remember the word's meaning. Explain the connection between the mnemonic's parts and the word's definition. For example: 'For Ubiquitous (U B Quick To See It Everywhere): This mnemonic uses the sound of 'U B Quick' to remind you of 'ubiquitous' and then tells you that something 'everywhere' is quick to see, linking the sound to the meaning.' 'For Ephemeral (Every Photo Eventually Melts Away, Really A Little): This mnemonic starts with 'Every Photo' (EP) to sound like 'ephemeral' and then uses the idea of photos 'melting away' quickly to show it means lasting only a very short time.' 'For Cacophony (Cats And Cows Often Fight, Oh No! Yikes!): This mnemonic uses the first sounds 'Ca-Co' to remind you of 'cacophony' and then paints a picture of fighting cats and cows, making a very loud, messy noise.'>",
+//   "synonyms": ["<synonym1>", "<synonym2>", "<synonym3>"],
+//   "antonyms": ["<antonym1>", "<antonym2>", "<antonym3>"]
+// }
+
+// Important instructions:
+// ✅ Always give at least one meaning & example.
+// ✅ If there are multiple common meanings, provide them (up to 2).
+// ✅ Use **clear, simple, child-friendly English** throughout.
+// ✅ For "mnemonic", prioritize:
+//   - **Creative, meaning-rich acronyms or phrases** using the letters.
+//   - **Sound-alike tricks** that directly hint at the meaning.
+//   - The mnemonic must be **instantly helpful for recall** and not just a mechanical split or addition. It should make the meaning 'click'.
+//   - Make it instantly memorable and intuitive for recall, avoiding complex or technical breakdowns.
+//   - Ensure it directly reflects the meaning with a vivid image or action.
+// ✅ For "breakdown", give a **visual, story-based, or situation-based memory hook** in plain English. This must directly explain how the *mnemonic* helps remember the word's meaning.
+// ✅ For "pronunciation", provide both the **IPA** and a **simple, easy-to-read phonetic spelling** (using standard English letters and dots for syllables).
+// ✅ Use common, simple English words for synonyms and antonyms if available.
+// ✅ Return **only** a **valid JSON array** with no extra explanation.
+
+// Here is the list of words:
+// ${wordsArray.join(", ")}`;
+
+// 			try {
+// 				const response = await talkWithAI(prompt);
+// 				console.log("The responsed array of words from the ai is : ");
+// 				console.log(response.text);
+
+// 				const enrichedWords = cleanAndConvertJsonString(response.text);
+
+// 				for (const enrichedWord of enrichedWords) {
+// 					// Update the word by finding case-insensitively
+// 					await Word.findOneAndUpdate(
+// 						{ word: { $regex: new RegExp(`^${enrichedWord.word}$`, "i") } },
+// 						{
+// 							pronunciation: enrichedWord.pronunciation,
+// 							meaning: enrichedWord.meaning,
+// 							origin: enrichedWord.origin,
+// 							relate_with: enrichedWord.relate_with,
+// 							synonyms: enrichedWord.synonyms,
+// 							antonyms: enrichedWord.antonyms,
+// 							mnemonic: enrichedWord.mnemonic,
+// 							breakdown: enrichedWord.breakdown,
+// 						},
+// 						{ new: true }
+// 					);
+// 					updatedWords.push(enrichedWord.word);
+// 					console.log(
+// 						`${updatedWords.length} words updated with mnemonic and breakdown.`
+// 					);
+// 				}
+// 				// Add 2-minute delay after each batch (120,000 ms)
+// 				if (i + BATCH_SIZE < allWords.length) {
+// 					console.log("Waiting 5 minutes before processing next batch...");
+// 					await delay(300000);
+// 				}
+// 			} catch (error) {
+// 				console.error("Error updating batch:", error);
+// 				// Continue to next batch instead of stopping everything
+// 			}
+// 		}
+
+// 		res.status(200).json({
+// 			message: `${updatedWords.length} words updated with mnemonic and breakdown.`,
+// 			updatedWords,
+// 		});
+// 	} catch (error) {
+// 		console.error(error);
+// 		res
+// 			.status(500)
+// 			.json({ message: "Failed to update words", error: error.message });
+// 	}
+// });
+
 // 4️⃣ (Optional) DELETE all words — useful for admin cleanup
 // app.delete("/words", async (req, res) => {
 // 	try {
@@ -593,3 +722,27 @@ app.get("/api/v1/getWordSortingTypes", (req, res) => {
 // 			.json({ message: "Failed to delete words", error: error.message });
 // 	}
 // });
+
+// function cleanAndConvertJsonString(jsonString) {
+// 	try {
+// 		// Remove triple backticks and 'json' marker
+// 		const cleanedString = jsonString
+// 			.trim()
+// 			.replace(/^```json\s*/i, "") // remove ```json at start
+// 			.replace(/```$/i, "") // remove ``` at end
+// 			.trim();
+
+// 		const parsed = JSON.parse(cleanedString);
+
+// 		if (Array.isArray(parsed)) {
+// 			console.log("✅ Successfully converted to array of objects!");
+// 			return parsed;
+// 		} else {
+// 			console.error("⚠ Parsed JSON is not an array.");
+// 			return [];
+// 		}
+// 	} catch (error) {
+// 		console.error("❌ Failed to parse JSON string:", error.message);
+// 		return [];
+// 	}
+// }
