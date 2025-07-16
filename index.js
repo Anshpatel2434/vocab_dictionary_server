@@ -4,7 +4,6 @@ const dotenv = require("dotenv");
 const Word = require("./model/Word");
 const cors = require("cors");
 const http = require("http");
-const { default: talkWithAI } = require("./AI");
 
 dotenv.config();
 
@@ -36,7 +35,7 @@ mongoose
 	.catch((error) => console.log(error));
 
 // Utility function to create a delay
-const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+// const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 app.get("/api/v1", (req, res) => {
 	res.send("Vocabulary API is running ✅");
