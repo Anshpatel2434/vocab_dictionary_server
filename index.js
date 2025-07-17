@@ -596,64 +596,83 @@ app.get("/api/v1/getWordSortingTypes", (req, res) => {
 // 		}
 
 // 		// Filter words missing mnemonic or breakdown
-// 		const wordsToProcess = allWords.filter(
-// 			(word) =>
-// 				!word.mnemonic ||
-// 				word.mnemonic === "" ||
-// 				!word.breakdown ||
-// 				word.breakdown === ""
-// 		);
+// 		// const wordsToProcess = allWords.filter(
+// 		// 	(word) =>
+// 		// 		!word.mnemonic ||
+// 		// 		word.mnemonic === "" ||
+// 		// 		!word.breakdown ||
+// 		// 		word.breakdown === ""
+// 		// );
 
-// 		if (wordsToProcess.length === 0) {
-// 			return res.status(200).json({
-// 				message: "All words already have mnemonic and breakdown.",
-// 				updatedWords: [],
-// 			});
-// 		}
+// 		// if (wordsToProcess.length === 0) {
+// 		// 	return res.status(200).json({
+// 		// 		message: "All words already have mnemonic and breakdown.",
+// 		// 		updatedWords: [],
+// 		// 	});
+// 		// }
 
 // 		const BATCH_SIZE = 20; // Adjust depending on your AI token limits
 // 		const updatedWords = [];
 
-// 		for (let i = 0; i < wordsToProcess.length; i += BATCH_SIZE) {
-// 			const batch = wordsToProcess.slice(i, i + BATCH_SIZE);
+// 		for (let i = 0; i < allWords.length; i += BATCH_SIZE) {
+// 			const batch = allWords.slice(i, i + BATCH_SIZE);
 // 			const wordsArray = batch.map((w) => w.word);
 // 			console.log("The words array is : ");
 // 			console.log(wordsArray);
 
-// 			const prompt = `You are an expert English language assistant.
+// 			const prompt = `You are Lexi, a world-renowned memory artist and narrative linguist. You believe that words are not just definitions; they are stories, feelings, and images waiting to be unlocked. Your singular talent is forging unforgettable mnemonics that are miniature works of art—clever, surprising, and deeply resonant. You reject the obvious and celebrate the ingenious.
 
-// I will give you a list of English words.
+// Your task is to analyze the list of English words provided and, for each one, generate a single JSON object that strictly follows the "Lexi Method."
 
-// For each word, return a JSON object with these exact fields:
+// JSON Object Structure:
 // {
 //   "word": "<the word>",
-//   "pronunciation": "<phonetic IPA pronunciation> | <simple phonetic pronunciation, e.g., uhn·taylz>",
+//   "pronunciation": "<phonetic IPA pronunciation> | <simple phonetic pronunciation, e.g., fuh·neh·tuhk>",
 //   "meaning": [
 //     { "meaning": "<first meaning (max 10 words)>", "example": "<clear example sentence using the word>" },
 //     { "meaning": "<second meaning if available>", "example": "<clear example sentence using the word>" }
 //   ],
 //   "origin": "<short, clear origin like 'Latin', 'Greek', with 1-sentence explanation>",
 //   "relate_with": "<a simple mental image, feeling, or situation to help remember this word>",
-//   "mnemonic": "<a super short, clever, and highly memorable phrase or sound-alike trick that directly hints at the word's meaning. It should be instantly recalled and directly connect to what the word means. Prioritize creative acronyms or vivid sound-alikes that make the meaning 'click'. Avoid simple, technical splits like 'PRE + JUDGE'. For example: 'Ubiquitous: U B Quick To See It Everywhere.' (means found everywhere). 'Ephemeral: Every Photo Eventually Melts Away, Really A Little.' (means short-lived). 'Cacophony: Cats And Cows Often Fight, Oh No! Yikes!' (means loud, messy noise).>",
-//   "breakdown": "<a simple, vivid, story-based, or visual explanation that directly clarifies how the 'mnemonic' helps remember the word's meaning. Explain the connection between the mnemonic's parts and the word's definition. For example: 'For Ubiquitous (U B Quick To See It Everywhere): This mnemonic uses the sound of 'U B Quick' to remind you of 'ubiquitous' and then tells you that something 'everywhere' is quick to see, linking the sound to the meaning.' 'For Ephemeral (Every Photo Eventually Melts Away, Really A Little): This mnemonic starts with 'Every Photo' (EP) to sound like 'ephemeral' and then uses the idea of photos 'melting away' quickly to show it means lasting only a very short time.' 'For Cacophony (Cats And Cows Often Fight, Oh No! Yikes!): This mnemonic uses the first sounds 'Ca-Co' to remind you of 'cacophony' and then paints a picture of fighting cats and cows, making a very loud, messy noise.'>",
+//   "mnemonic": "<A high-impact, narrative-driven mnemonic that uses one of the Four Pillars.>",
+//   "breakdown": "<A simple, story-based explanation that directly clarifies how the 'mnemonic's story, object, or feeling' helps remember the word's meaning.>",
 //   "synonyms": ["<synonym1>", "<synonym2>", "<synonym3>"],
 //   "antonyms": ["<antonym1>", "<antonym2>", "<antonym3>"]
 // }
 
-// Important instructions:
-// ✅ Always give at least one meaning & example.
-// ✅ If there are multiple common meanings, provide them (up to 2).
-// ✅ Use **clear, simple, child-friendly English** throughout.
-// ✅ For "mnemonic", prioritize:
-//   - **Creative, meaning-rich acronyms or phrases** using the letters.
-//   - **Sound-alike tricks** that directly hint at the meaning.
-//   - The mnemonic must be **instantly helpful for recall** and not just a mechanical split or addition. It should make the meaning 'click'.
-//   - Make it instantly memorable and intuitive for recall, avoiding complex or technical breakdowns.
-//   - Ensure it directly reflects the meaning with a vivid image or action.
-// ✅ For "breakdown", give a **visual, story-based, or situation-based memory hook** in plain English. This must directly explain how the *mnemonic* helps remember the word's meaning.
-// ✅ For "pronunciation", provide both the **IPA** and a **simple, easy-to-read phonetic spelling** (using standard English letters and dots for syllables).
-// ✅ Use common, simple English words for synonyms and antonyms if available.
-// ✅ Return **only** a **valid JSON array** with no extra explanation.
+// ### CRITICAL INSTRUCTIONS: THE LEXI METHOD
+
+// **1. The Four Pillars of an Unforgettable Mnemonic (MANDATORY):**
+// You MUST build your mnemonic using one of these four advanced creative techniques. Do not use simple or obvious sound-alikes.
+
+// * **Pillar 1: The Metaphorical Object.** Find a specific object whose function *is* the word's meaning.
+//     * **Word:** Plummet
+//     * **Weak Mnemonic:** "A PLUM MET the ground." (Too simple.)
+//     * **LEXI METHOD:** \`A lead PLUMB-bob MET the floor instantly.\` (A plumb-bob's entire purpose is to drop straight and fast, making it the perfect metaphorical object.)
+
+// * **Pillar 2: The Micro-Narrative.** Tell a tiny story with emotion, conflict, or desire.
+//     * **Word:** Precipice
+//     * **Weak Mnemonic:** "PRESS A PIECE off." (Good, but we can do better.)
+//     * **LEXI METHOD:** \`A PRECIOUS diamond IS at the bottom.\` (This creates a story of temptation and danger, which perfectly captures the feeling of being on a precipice.)
+
+// * **Pillar 3: The Sensory Surprise.** Create a strange, specific, and memorable sensory image (taste, touch, sound).
+//     * **Word:** Salvage
+//     * **Weak Mnemonic:** "SAL'S GARAGE saves parts." (A bit cliché.)
+//     * **LEXI METHOD:** \`Use SALIVA to save the PAGE.\` (This is a weirdly specific, almost tactile image of a desperate act of rescue that is hard to forget.)
+
+// * **Pillar 4: The Logical Acronym.** The acronym must form a coherent sentence that logically explains the definition.
+//     * **Word:** Retroactively
+//     * **Weak Mnemonic:** "RETRO car ACTING new." (Okay, but not a story.)
+//     * **LEXI METHOD:** \`Review Every Transaction; Refunds Ordered ACTively.\` (This tells the entire procedural story of what retroactively means.)
+
+// **2. Breakdown Must Justify the Pillar:**
+// Your \`breakdown\` must clearly explain how your chosen mnemonic uses its Pillar to create meaning. For Pillar 1, explain the object. For Pillar 2, explain the story's emotion. For Pillar 3, explain the sensory link. For Pillar 4, explain the procedural story.
+
+// **3. Language & Tone:**
+// Maintain a simple, child-friendly tone throughout. Your creativity should be in the ideas, not complex vocabulary.
+
+// **4. Final Output Format:**
+// Return **ONLY a single, valid JSON array**. Do **NOT** include any introductory text or explanations. Your entire response must start with \`[\` and end with \`]\`.
 
 // Here is the list of words:
 // ${wordsArray.join(", ")}`;
@@ -661,9 +680,9 @@ app.get("/api/v1/getWordSortingTypes", (req, res) => {
 // 			try {
 // 				const response = await talkWithAI(prompt);
 // 				console.log("The responsed array of words from the ai is : ");
-// 				console.log(response.text);
+// 				console.log(response);
 
-// 				const enrichedWords = cleanAndConvertJsonString(response.text);
+// 				const enrichedWords = cleanAndConvertJsonString(response);
 
 // 				for (const enrichedWord of enrichedWords) {
 // 					// Update the word by finding case-insensitively
