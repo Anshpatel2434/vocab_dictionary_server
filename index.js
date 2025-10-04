@@ -4,6 +4,7 @@ const dotenv = require("dotenv");
 const Word = require("./model/Word");
 const cors = require("cors");
 const http = require("http");
+const { default: talkWithAI } = require("./AI");
 
 dotenv.config();
 
@@ -33,9 +34,6 @@ mongoose
 		});
 	})
 	.catch((error) => console.log(error));
-
-// Utility function to create a delay
-// const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 app.get("/api/v1", (req, res) => {
 	res.send("Vocabulary API is running ✅");
@@ -584,149 +582,168 @@ app.get("/api/v1/getWordSortingTypes", (req, res) => {
 	}
 });
 
+// Utility function to create a delay
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 //to update all the words just in case
-// app.put("/api/v1/updateWordsWithMnemonics", async (req, res) => {
-// 	console.log("Got the request ? ");
-// 	try {
-// 		const allWords = await Word.find({});
-// 		if (!allWords || allWords.length === 0) {
-// 			return res
-// 				.status(404)
-// 				.json({ message: "No words found in the database." });
-// 		}
+app.put("/api/v1/updateWordsWithMnemonics", async (req, res) => {
+	console.log("Got the request ? ");
+	try {
+		const allWords = await Word.find({});
+		if (!allWords || allWords.length === 0) {
+			return res
+				.status(404)
+				.json({ message: "No words found in the database." });
+		}
 
-// 		// Filter words missing mnemonic or breakdown
-// 		// const wordsToProcess = allWords.filter(
-// 		// 	(word) =>
-// 		// 		!word.mnemonic ||
-// 		// 		word.mnemonic === "" ||
-// 		// 		!word.breakdown ||
-// 		// 		word.breakdown === ""
-// 		// );
+		// Filter words missing mnemonic or breakdown
+		// const wordsToProcess = allWords.filter(
+		// 	(word) =>
+		// 		!word.mnemonic ||
+		// 		word.mnemonic === "" ||
+		// 		!word.breakdown ||
+		// 		word.breakdown === ""
+		// );
 
-// 		// if (wordsToProcess.length === 0) {
-// 		// 	return res.status(200).json({
-// 		// 		message: "All words already have mnemonic and breakdown.",
-// 		// 		updatedWords: [],
-// 		// 	});
-// 		// }
+		// if (wordsToProcess.length === 0) {
+		// 	return res.status(200).json({
+		// 		message: "All words already have mnemonic and breakdown.",
+		// 		updatedWords: [],
+		// 	});
+		// }
 
-// 		const BATCH_SIZE = 20; // Adjust depending on your AI token limits
-// 		const updatedWords = [];
+		const BATCH_SIZE = 30; // Adjust depending on your AI token limits
+		const updatedWords = [];
 
-// 		for (let i = 0; i < allWords.length; i += BATCH_SIZE) {
-// 			const batch = allWords.slice(i, i + BATCH_SIZE);
-// 			const wordsArray = batch.map((w) => w.word);
-// 			console.log("The words array is : ");
-// 			console.log(wordsArray);
+		for (let i = 0; i < allWords.length; i += BATCH_SIZE) {
+			const batch = allWords.slice(i, i + BATCH_SIZE);
+			const wordsArray = batch.map((w) => w.word);
+			console.log("The words array is : ");
+			console.log(wordsArray);
 
-// 			const prompt = `You are Lexi, a world-renowned memory artist and narrative linguist. You believe that words are not just definitions; they are stories, feelings, and images waiting to be unlocked. Your singular talent is forging unforgettable mnemonics that are miniature works of art—clever, surprising, and deeply resonant. You reject the obvious and celebrate the ingenious.
+			const prompt = `You are Lexi, a world-renowned memory artist and narrative linguist. You believe that words are not just definitions; they are stories, feelings, and images waiting to be unlocked. Your singular talent is forging unforgettable mnemonics that are miniature works of art—clever, surprising, and deeply resonant.
 
-// Your task is to analyze the list of English words provided and, for each one, generate a single JSON object that strictly follows the "Lexi Method."
+Your core philosophy is **Word-First Recall**: the most powerful mnemonic is found *within the sounds of the word itself*. The goal is for someone to see the word, instantly recall its phonetic hook, and remember the meaning without imagining a complex external scene.
 
-// JSON Object Structure:
-// {
-//   "word": "<the word>",
-//   "pronunciation": "<phonetic IPA pronunciation> | <simple phonetic pronunciation, e.g., fuh·neh·tuhk>",
-//   "meaning": [
-//     { "meaning": "<first meaning (max 10 words)>", "example": "<clear example sentence using the word>" },
-//     { "meaning": "<second meaning if available>", "example": "<clear example sentence using the word>" }
-//   ],
-//   "origin": "<short, clear origin like 'Latin', 'Greek', with 1-sentence explanation>",
-//   "relate_with": "<a simple mental image, feeling, or situation to help remember this word>",
-//   "mnemonic": "<A high-impact, narrative-driven mnemonic that uses one of the Four Pillars.>",
-//   "breakdown": "<A simple, story-based explanation that directly clarifies how the 'mnemonic's story, object, or feeling' helps remember the word's meaning.>",
-//   "synonyms": ["<synonym1>", "<synonym2>", "<synonym3>"],
-//   "antonyms": ["<antonym1>", "<antonym2>", "<antonym3>"]
-// }
+Your task is to analyze the list of English words provided and, for each one, generate a single JSON object that strictly follows the "Lexi Method."
 
-// ### CRITICAL INSTRUCTIONS: THE LEXI METHOD
+JSON Object Structure:
+ {
+   "word": "<the word>",
+   "pronunciation": "<phonetic IPA pronunciation> | <simple phonetic pronunciation, e.g., fuh·neh·tuhk>",
+   "meaning": [
+     { "meaning": "<first meaning (max 10 words)>", "example": "<clear example sentence using the word>" },
+     { "meaning": "<second meaning if available>", "example": "<clear example sentence using the word>" }
+   ],
+   "origin": "<short, clear origin like 'Latin', 'Greek', with 1-sentence explanation>",
+   "relate_with": "<A simple, direct feeling or idea linked to the word's meaning.>",
+   "mnemonic": "<A high-impact mnemonic built by deconstructing the word's sounds into a defining phrase.>",
+   "breakdown": "<A simple, clear explanation of how the mnemonic's phonetic parts create the word's meaning.>",
+   "synonyms": ["<synonym1>", "<synonym2>", "<synonym3>"],
+   "antonyms": ["<antonym1>", "<antonym2>", "<antonym3>"]
+ }
 
-// **1. The Four Pillars of an Unforgettable Mnemonic (MANDATORY):**
-// You MUST build your mnemonic using one of these four advanced creative techniques. Do not use simple or obvious sound-alikes.
+ ### CRITICAL INSTRUCTIONS: THE LEXI METHOD
 
-// * **Pillar 1: The Metaphorical Object.** Find a specific object whose function *is* the word's meaning.
-//     * **Word:** Plummet
-//     * **Weak Mnemonic:** "A PLUM MET the ground." (Too simple.)
-//     * **LEXI METHOD:** \`A lead PLUMB-bob MET the floor instantly.\` (A plumb-bob's entire purpose is to drop straight and fast, making it the perfect metaphorical object.)
+ You MUST build your mnemonic using the **Core Principles of Word-First Recall**. This means you will deconstruct the word into sound-alike fragments that form a new phrase defining the word.
 
-// * **Pillar 2: The Micro-Narrative.** Tell a tiny story with emotion, conflict, or desire.
-//     * **Word:** Precipice
-//     * **Weak Mnemonic:** "PRESS A PIECE off." (Good, but we can do better.)
-//     * **LEXI METHOD:** \`A PRECIOUS diamond IS at the bottom.\` (This creates a story of temptation and danger, which perfectly captures the feeling of being on a precipice.)
+ * **Principle 1: Sound-Alike Decomposition.** Break the target word into phonetic chunks that sound like simpler, common English words.
+ * **Principle 2: The Defining Phrase.** Combine these sound-alike chunks into a very short, memorable phrase or "equation" that directly explains or demonstrates the word's meaning.
+ * **Principle 3: Direct Link, No Detours.** The mnemonic **must** come from the word's sound. Avoid creating external stories, metaphorical objects, or complex scenarios that are not directly suggested by the word's phonetics.
 
-// * **Pillar 3: The Sensory Surprise.** Create a strange, specific, and memorable sensory image (taste, touch, sound).
-//     * **Word:** Salvage
-//     * **Weak Mnemonic:** "SAL'S GARAGE saves parts." (A bit cliché.)
-//     * **LEXI METHOD:** \`Use SALIVA to save the PAGE.\` (This is a weirdly specific, almost tactile image of a desperate act of rescue that is hard to forget.)
+ **Example of the Method in Action:**
 
-// * **Pillar 4: The Logical Acronym.** The acronym must form a coherent sentence that logically explains the definition.
-//     * **Word:** Retroactively
-//     * **Weak Mnemonic:** "RETRO car ACTING new." (Okay, but not a story.)
-//     * **LEXI METHOD:** \`Review Every Transaction; Refunds Ordered ACTively.\` (This tells the entire procedural story of what retroactively means.)
+* **Word:** Insidious
+* **Weak Mnemonic:** "He's a villain who lives *in the city*." (This is an external story, not based on the word's sound).
+* **LEXI METHOD:** \`It hides **INSIDE** and is **HIDEOUS**.\`
 
-// **2. Breakdown Must Justify the Pillar:**
-// Your \`breakdown\` must clearly explain how your chosen mnemonic uses its Pillar to create meaning. For Pillar 1, explain the object. For Pillar 2, explain the story's emotion. For Pillar 3, explain the sensory link. For Pillar 4, explain the procedural story.
+ **Breakdown Must Justify the Mnemonic:**
+ Your \`breakdown\` must clearly explain how the sound-alike parts in your mnemonic logically connect to the word's definition.
+* **Example Breakdown for Insidious:** "The mnemonic breaks the word into two core ideas: \`Inside\` points to its hidden, subtle, and sneaky nature. \`Hideous\` points to its truly ugly and harmful result. Together, they define something that is harmful in a subtle way."
 
-// **3. Language & Tone:**
-// Maintain a simple, child-friendly tone throughout. Your creativity should be in the ideas, not complex vocabulary.
+ **Language & Tone:**
+ Maintain a simple, direct, and encouraging tone. Your creativity should shine through the cleverness of the phonetic links, not through complex vocabulary.
 
-// **4. Final Output Format:**
-// Return **ONLY a single, valid JSON array**. Do **NOT** include any introductory text or explanations. Your entire response must start with \`[\` and end with \`]\`.
+ **Final Output Format:**
+ Return **ONLY a single, valid JSON array**. Do **NOT** include any introductory text or explanations. Your entire response must start with \`[\` and end with \`]\`.
 
-// Here is the list of words:
-// ${wordsArray.join(", ")}`;
+Here is the list of words:
+${wordsArray.join(", ")}`;
 
-// 			try {
-// 				const response = await talkWithAI(prompt);
-// 				console.log("The responsed array of words from the ai is : ");
-// 				console.log(response);
+			try {
+				const response = await talkWithAI(prompt);
+				console.log("The responsed array of words from the ai is : ");
+				console.log(response);
 
-// 				const enrichedWords = cleanAndConvertJsonString(response);
+				const enrichedWords = cleanAndConvertJsonString(response);
 
-// 				for (const enrichedWord of enrichedWords) {
-// 					// Update the word by finding case-insensitively
-// 					await Word.findOneAndUpdate(
-// 						{ word: { $regex: new RegExp(`^${enrichedWord.word}$`, "i") } },
-// 						{
-// 							pronunciation: enrichedWord.pronunciation,
-// 							meaning: enrichedWord.meaning,
-// 							origin: enrichedWord.origin,
-// 							relate_with: enrichedWord.relate_with,
-// 							synonyms: enrichedWord.synonyms,
-// 							antonyms: enrichedWord.antonyms,
-// 							mnemonic: enrichedWord.mnemonic,
-// 							breakdown: enrichedWord.breakdown,
-// 						},
-// 						{ new: true }
-// 					);
-// 					updatedWords.push(enrichedWord.word);
-// 					console.log(
-// 						`${updatedWords.length} words updated with mnemonic and breakdown.`
-// 					);
-// 				}
-// 				// Add 2-minute delay after each batch (120,000 ms)
-// 				if (i + BATCH_SIZE < allWords.length) {
-// 					console.log("Waiting 5 minutes before processing next batch...");
-// 					await delay(300000);
-// 				}
-// 			} catch (error) {
-// 				console.error("Error updating batch:", error);
-// 				// Continue to next batch instead of stopping everything
-// 			}
-// 		}
+				for (const enrichedWord of enrichedWords) {
+					// Update the word by finding case-insensitively
+					await Word.findOneAndUpdate(
+						{ word: { $regex: new RegExp(`^${enrichedWord.word}$`, "i") } },
+						{
+							pronunciation: enrichedWord.pronunciation,
+							meaning: enrichedWord.meaning,
+							origin: enrichedWord.origin,
+							relate_with: enrichedWord.relate_with,
+							synonyms: enrichedWord.synonyms,
+							antonyms: enrichedWord.antonyms,
+							mnemonic: enrichedWord.mnemonic,
+							breakdown: enrichedWord.breakdown,
+						},
+						{ new: true }
+					);
+					updatedWords.push(enrichedWord.word);
+					console.log(
+						`${updatedWords.length} words updated with mnemonic and breakdown.`
+					);
+				}
+				// Add 2-minute delay after each batch (120,000 ms)
+				if (i + BATCH_SIZE < allWords.length) {
+					console.log("Waiting 5 minutes before processing next batch...");
+					await delay(300000);
+				}
+			} catch (error) {
+				console.error("Error updating batch:", error);
+				// Continue to next batch instead of stopping everything
+			}
+		}
 
-// 		res.status(200).json({
-// 			message: `${updatedWords.length} words updated with mnemonic and breakdown.`,
-// 			updatedWords,
-// 		});
-// 	} catch (error) {
-// 		console.error(error);
-// 		res
-// 			.status(500)
-// 			.json({ message: "Failed to update words", error: error.message });
-// 	}
-// });
+		res.status(200).json({
+			message: `${updatedWords.length} words updated with mnemonic and breakdown.`,
+			updatedWords,
+		});
+	} catch (error) {
+		console.error(error);
+		res
+			.status(500)
+			.json({ message: "Failed to update words", error: error.message });
+	}
+});
+
+function cleanAndConvertJsonString(jsonString) {
+	try {
+		// Remove triple backticks and 'json' marker
+		const cleanedString = jsonString
+			.trim()
+			.replace(/^```json\s*/i, "") // remove ```json at start
+			.replace(/```$/i, "") // remove ``` at end
+			.trim();
+
+		const parsed = JSON.parse(cleanedString);
+
+		if (Array.isArray(parsed)) {
+			console.log("✅ Successfully converted to array of objects!");
+			return parsed;
+		} else {
+			console.error("⚠ Parsed JSON is not an array.");
+			return [];
+		}
+	} catch (error) {
+		console.error("❌ Failed to parse JSON string:", error.message);
+		return [];
+	}
+}
 
 // 4️⃣ (Optional) DELETE all words — useful for admin cleanup
 // app.delete("/words", async (req, res) => {
@@ -740,27 +757,3 @@ app.get("/api/v1/getWordSortingTypes", (req, res) => {
 // 			.json({ message: "Failed to delete words", error: error.message });
 // 	}
 // });
-
-// function cleanAndConvertJsonString(jsonString) {
-// 	try {
-// 		// Remove triple backticks and 'json' marker
-// 		const cleanedString = jsonString
-// 			.trim()
-// 			.replace(/^```json\s*/i, "") // remove ```json at start
-// 			.replace(/```$/i, "") // remove ``` at end
-// 			.trim();
-
-// 		const parsed = JSON.parse(cleanedString);
-
-// 		if (Array.isArray(parsed)) {
-// 			console.log("✅ Successfully converted to array of objects!");
-// 			return parsed;
-// 		} else {
-// 			console.error("⚠ Parsed JSON is not an array.");
-// 			return [];
-// 		}
-// 	} catch (error) {
-// 		console.error("❌ Failed to parse JSON string:", error.message);
-// 		return [];
-// 	}
-// }

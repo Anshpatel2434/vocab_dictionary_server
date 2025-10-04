@@ -22,7 +22,7 @@ const ai = new GoogleGenerativeAI(GEMINI_API_KEY);
 const talkWithAI = async (prompt) => {
 	try {
 		// Get the specified generative model
-		const model = ai.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+		const model = ai.getGenerativeModel({ model: "gemini-2.5-pro" });
 
 		// Generate content based on the prompt
 		const result = await model.generateContent(prompt);
